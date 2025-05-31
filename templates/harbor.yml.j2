@@ -1,0 +1,537 @@
+# {{ ansible_managed }}
+# Configuration file of Harbor
+
+# The IP address or hostname to access admin UI and registry service.
+# DO NOT use localhost or 127.0.0.1, because Harbor needs to be accessed by external clients.
+hostname: {{ harbor_config.hostname | default('reg.mydomain.com') }}
+
+# http related config
+http:
+  # port for http, default is 80. If https enabled, this port will redirect to https port
+  port: {{ harbor_config.http.port | default(80) }}
+
+{% if harbor_config.https is defined and harbor_config.https.enabled | default(true) %}
+# https related config
+https:
+  # https port for harbor, default is 443
+  port: {{ harbor_config.https.port | default(443) }}
+  # The path of cert and key files for nginx
+  certificate: {{ harbor_config.https.certificate | default('/your/certificate/path') }}
+  private_key: {{ harbor_config.https.private_key | default('/your/private/key/path') }}
+  # enable strong ssl ciphers (default: false)
+  strong_ssl_ciphers: {{ harbor_config.https.strong_ssl_ciphers | default(false) | lower }}
+{% endif %}
+
+{% if harbor_config.ip_family is defined %}
+# Harbor will set ipv4 enabled only by default if this block is not configured
+# Otherwise, please uncomment this block to configure your own ip_family stacks
+ip_family:
+  # ipv6Enabled set to true if ipv6 is enabled in docker network, currently it affected the nginx related component
+  ipv6:
+    enabled: {{ harbor_config.ip_family.ipv6.enabled | default(false) | lower }}
+  # ipv4Enabled set to true by default, currently it affected the nginx related component
+  ipv4:
+    enabled: {{ harbor_config.ip_family.ipv4.enabled | default(true) | lower }}
+{% endif %}
+
+{% if harbor_config.internal_tls is defined and harbor_config.internal_tls.enabled | default(false) %}
+# Uncomment following will enable tls communication between all harbor components
+internal_tls:
+  # set enabled to true means internal tls is enabled
+  enabled: {{ harbor_config.internal_tls.enabled | lower }}
+  # put your cert and key files on dir
+  dir: {{ harbor_config.internal_tls.dir | default('/etc/harbor/tls/internal') }}
+{% endif %}
+
+{% if harbor_config.external_url is defined %}
+# Uncomment external_url if you want to enable external proxy
+# And when it enabled the hostname will no longer used
+external_url: {{ harbor_config.external_url }}
+{% endif %}
+
+# The initial password of Harbor admin
+# It only works in first time to install harbor
+# Remember Change the admin password from UI after launching Harbor.
+harbor_admin_password: {{ harbor_config.harbor_admin_password | default('Harbor12345') }}
+
+# Harbor DB configuration
+database:
+  # The password for the user('postgres' by default) of Harbor DB. Change this before any production use.
+  password: {{ harbor_config.database.password | default('root123') }}
+  # The maximum number of connections in the idle connection pool. If it <=0, no idle connections are retained.
+  max_idle_conns: {{ harbor_config.database.max_idle_conns | default(100) }}
+  # The maximum number of open connections to the database. If it <= 0, then there is no limit on the number of open connections.
+  # Note: the default number of connections is 1024 for postgres of harbor.
+  max_open_conns: {{ harbor_config.database.max_open_conns | default(900) }}
+  # The maximum amount of time a connection may be reused. Expired connections may be closed lazily before reuse. If it <= 0, connections are not closed due to a connection's age.
+  # The value is a duration string. A duration string is a possibly signed sequence of decimal numbers, each with optional fraction and a unit suffix, such as "300ms", "-1.5h" or "2h45m". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+  conn_max_lifetime: {{ harbor_config.database.conn_max_lifetime | default('5m') }}
+  # The maximum amount of time a connection may be idle. Expired connections may be closed lazily before reuse. If it <= 0, connections are not closed due to a connection's idle time.
+  # The value is a duration string. A duration string is a possibly signed sequence of decimal numbers, each with optional fraction and a unit suffix, such as "300ms", "-1.5h" or "2h45m". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+  conn_max_idle_time: {{ harbor_config.database.conn_max_idle_time | default(0) }}
+
+# The default data volume
+data_volume: {{ harbor_config.data_volume | default('/data') }}
+
+{% if harbor_config.storage_service is defined and harbor_config.storage_service.enabled | default(false) %}
+# Harbor Storage settings by default is using /data dir on local filesystem
+# Uncomment storage_service setting If you want to using external storage
+storage_service:
+{% if harbor_config.storage_service.ca_bundle is defined %}
+  # ca_bundle is the path to the custom root ca certificate, which will be injected into the truststore
+  # of registry's containers.  This is usually needed when the user hosts a internal storage with self signed certificate.
+  ca_bundle: {{ harbor_config.storage_service.ca_bundle }}
+{% endif %}
+
+  # storage backend, default is filesystem, options include filesystem, azure, gcs, s3, swift and oss
+  # for more info about this configuration please refer https://distribution.github.io/distribution/about/configuration/
+  # and https://distribution.github.io/distribution/storage-drivers/
+{% if harbor_config.storage_service.backend == 'filesystem' %}
+  filesystem:
+    maxthreads: {{ harbor_config.storage_service.filesystem.maxthreads | default(100) }}
+{% elif harbor_config.storage_service.backend == 's3' %}
+  s3:
+    region: {{ harbor_config.storage_service.s3.region }}
+    bucket: {{ harbor_config.storage_service.s3.bucket }}
+    accesskey: {{ harbor_config.storage_service.s3.accesskey }}
+    secretkey: {{ harbor_config.storage_service.s3.secretkey }}
+{% if harbor_config.storage_service.s3.regionendpoint is defined %}
+    regionendpoint: {{ harbor_config.storage_service.s3.regionendpoint }}
+{% endif %}
+{% if harbor_config.storage_service.s3.encrypt is defined %}
+    encrypt: {{ harbor_config.storage_service.s3.encrypt | lower }}
+{% endif %}
+{% if harbor_config.storage_service.s3.secure is defined %}
+    secure: {{ harbor_config.storage_service.s3.secure | lower }}
+{% endif %}
+{% if harbor_config.storage_service.s3.v4auth is defined %}
+    v4auth: {{ harbor_config.storage_service.s3.v4auth | lower }}
+{% endif %}
+{% if harbor_config.storage_service.s3.chunksize is defined %}
+    chunksize: {{ harbor_config.storage_service.s3.chunksize }}
+{% endif %}
+{% if harbor_config.storage_service.s3.rootdirectory is defined %}
+    rootdirectory: {{ harbor_config.storage_service.s3.rootdirectory }}
+{% endif %}
+{% if harbor_config.storage_service.s3.storageclass is defined %}
+    storageclass: {{ harbor_config.storage_service.s3.storageclass }}
+{% endif %}
+{% elif harbor_config.storage_service.backend == 'azure' %}
+  azure:
+    accountname: {{ harbor_config.storage_service.azure.accountname }}
+    accountkey: {{ harbor_config.storage_service.azure.accountkey }}
+    container: {{ harbor_config.storage_service.azure.container }}
+{% if harbor_config.storage_service.azure.realm is defined %}
+    realm: {{ harbor_config.storage_service.azure.realm }}
+{% endif %}
+{% elif harbor_config.storage_service.backend == 'gcs' %}
+  gcs:
+    bucket: {{ harbor_config.storage_service.gcs.bucket }}
+    keyfile: {{ harbor_config.storage_service.gcs.keyfile }}
+{% if harbor_config.storage_service.gcs.rootdirectory is defined %}
+    rootdirectory: {{ harbor_config.storage_service.gcs.rootdirectory }}
+{% endif %}
+{% elif harbor_config.storage_service.backend == 'swift' %}
+  swift:
+    authurl: {{ harbor_config.storage_service.swift.authurl }}
+    username: {{ harbor_config.storage_service.swift.username }}
+    password: {{ harbor_config.storage_service.swift.password }}
+    container: {{ harbor_config.storage_service.swift.container }}
+{% if harbor_config.storage_service.swift.region is defined %}
+    region: {{ harbor_config.storage_service.swift.region }}
+{% endif %}
+{% if harbor_config.storage_service.swift.tenant is defined %}
+    tenant: {{ harbor_config.storage_service.swift.tenant }}
+{% endif %}
+{% if harbor_config.storage_service.swift.tenantid is defined %}
+    tenantid: {{ harbor_config.storage_service.swift.tenantid }}
+{% endif %}
+{% if harbor_config.storage_service.swift.domain is defined %}
+    domain: {{ harbor_config.storage_service.swift.domain }}
+{% endif %}
+{% if harbor_config.storage_service.swift.domainid is defined %}
+    domainid: {{ harbor_config.storage_service.swift.domainid }}
+{% endif %}
+{% if harbor_config.storage_service.swift.trustid is defined %}
+    trustid: {{ harbor_config.storage_service.swift.trustid }}
+{% endif %}
+{% if harbor_config.storage_service.swift.insecureskipverify is defined %}
+    insecureskipverify: {{ harbor_config.storage_service.swift.insecureskipverify | lower }}
+{% endif %}
+{% if harbor_config.storage_service.swift.chunksize is defined %}
+    chunksize: {{ harbor_config.storage_service.swift.chunksize }}
+{% endif %}
+{% if harbor_config.storage_service.swift.prefix is defined %}
+    prefix: {{ harbor_config.storage_service.swift.prefix }}
+{% endif %}
+{% if harbor_config.storage_service.swift.secretkey is defined %}
+    secretkey: {{ harbor_config.storage_service.swift.secretkey }}
+{% endif %}
+{% if harbor_config.storage_service.swift.accesskey is defined %}
+    accesskey: {{ harbor_config.storage_service.swift.accesskey }}
+{% endif %}
+{% if harbor_config.storage_service.swift.authversion is defined %}
+    authversion: {{ harbor_config.storage_service.swift.authversion }}
+{% endif %}
+{% if harbor_config.storage_service.swift.endpointtype is defined %}
+    endpointtype: {{ harbor_config.storage_service.swift.endpointtype }}
+{% endif %}
+{% if harbor_config.storage_service.swift.tempurlcontainerkey is defined %}
+    tempurlcontainerkey: {{ harbor_config.storage_service.swift.tempurlcontainerkey }}
+{% endif %}
+{% if harbor_config.storage_service.swift.tempurlmethods is defined %}
+    tempurlmethods: {{ harbor_config.storage_service.swift.tempurlmethods }}
+{% endif %}
+{% elif harbor_config.storage_service.backend == 'oss' %}
+  oss:
+    accesskeyid: {{ harbor_config.storage_service.oss.accesskeyid }}
+    accesskeysecret: {{ harbor_config.storage_service.oss.accesskeysecret }}
+    region: {{ harbor_config.storage_service.oss.region }}
+    bucket: {{ harbor_config.storage_service.oss.bucket }}
+{% if harbor_config.storage_service.oss.endpoint is defined %}
+    endpoint: {{ harbor_config.storage_service.oss.endpoint }}
+{% endif %}
+{% if harbor_config.storage_service.oss.internal is defined %}
+    internal: {{ harbor_config.storage_service.oss.internal | lower }}
+{% endif %}
+{% if harbor_config.storage_service.oss.encrypt is defined %}
+    encrypt: {{ harbor_config.storage_service.oss.encrypt | lower }}
+{% endif %}
+{% if harbor_config.storage_service.oss.secure is defined %}
+    secure: {{ harbor_config.storage_service.oss.secure | lower }}
+{% endif %}
+{% if harbor_config.storage_service.oss.chunksize is defined %}
+    chunksize: {{ harbor_config.storage_service.oss.chunksize }}
+{% endif %}
+{% if harbor_config.storage_service.oss.rootdirectory is defined %}
+    rootdirectory: {{ harbor_config.storage_service.oss.rootdirectory }}
+{% endif %}
+{% endif %}
+  # set disable to true when you want to disable registry redirect
+  redirect:
+    disable: {{ harbor_config.storage_service.redirect.disable | default(false) | lower }}
+{% endif %}
+
+# Trivy configuration
+#
+# Trivy DB contains vulnerability information from NVD, Red Hat, and many other upstream vulnerability databases.
+# It is downloaded by Trivy from the GitHub release page https://github.com/aquasecurity/trivy-db/releases and cached
+# in the local file system. In addition, the database contains the update timestamp so Trivy can detect whether it
+# should download a newer version from the Internet or use the cached one. Currently, the database is updated every
+# 12 hours and published as a new release to GitHub.
+trivy:
+  # ignoreUnfixed The flag to display only fixed vulnerabilities
+  ignore_unfixed: {{ harbor_config.trivy.ignore_unfixed | default(false) | lower }}
+  # skipUpdate The flag to enable or disable Trivy DB downloads from GitHub
+  #
+  # You might want to enable this flag in test or CI/CD environments to avoid GitHub rate limiting issues.
+  # If the flag is enabled you have to download the `trivy-offline.tar.gz` archive manually, extract `trivy.db` and
+  # `metadata.json` files and mount them in the `/home/scanner/.cache/trivy/db` path.
+  skip_update: {{ harbor_config.trivy.skip_update | default(false) | lower }}
+  #
+  # skipJavaDBUpdate If the flag is enabled you have to manually download the `trivy-java.db` file and mount it in the
+  # `/home/scanner/.cache/trivy/java-db/trivy-java.db` path
+  skip_java_db_update: {{ harbor_config.trivy.skip_java_db_update | default(false) | lower }}
+  #
+  # The offline_scan option prevents Trivy from sending API requests to identify dependencies.
+  # Scanning JAR files and pom.xml may require Internet access for better detection, but this option tries to avoid it.
+  # For example, the offline mode will not try to resolve transitive dependencies in pom.xml when the dependency doesn't
+  # exist in the local repositories. It means a number of detected vulnerabilities might be fewer in offline mode.
+  # It would work if all the dependencies are in local.
+  # This option doesn't affect DB download. You need to specify "skip-update" as well as "offline-scan" in an air-gapped environment.
+  offline_scan: {{ harbor_config.trivy.offline_scan | default(false) | lower }}
+  #
+  # Comma-separated list of what security issues to detect. Possible values are `vuln`, `config` and `secret`. Defaults to `vuln`.
+  security_check: {{ harbor_config.trivy.security_check | default('vuln') }}
+  #
+  # insecure The flag to skip verifying registry certificate
+  insecure: {{ harbor_config.trivy.insecure | default(false) | lower }}
+  #
+  # timeout The duration to wait for scan completion.
+  # There is upper bound of 30 minutes defined in scan job. So if this `timeout` is larger than 30m0s, it will also timeout at 30m0s.
+  timeout: {{ harbor_config.trivy.timeout | default('5m0s') }}
+  #
+  # github_token The GitHub access token to download Trivy DB
+  #
+  # Anonymous downloads from GitHub are subject to the limit of 60 requests per hour. Normally such rate limit is enough
+  # for production operations. If, for any reason, it's not enough, you could increase the rate limit to 5000
+  # requests per hour by specifying the GitHub access token. For more details on GitHub rate limiting please consult
+  # https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting
+  #
+  # You can create a GitHub token by following the instructions in
+  # https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line
+  #
+{% if harbor_config.trivy.github_token is defined %}
+  github_token: {{ harbor_config.trivy.github_token }}
+{% endif %}
+
+jobservice:
+  # Maximum number of job workers in job service
+  max_job_workers: {{ harbor_config.jobservice.max_job_workers | default(10) }}
+  # Maximum hours of task duration in job service, default 24
+  max_job_duration_hours: {{ harbor_config.jobservice.max_job_duration_hours | default(24) }}
+  # The jobLoggers backend name, only support "STD_OUTPUT", "FILE" and/or "DB"
+  job_loggers:
+{% for logger in harbor_config.jobservice.job_loggers | default(['STD_OUTPUT', 'FILE']) %}
+    - {{ logger }}
+{% endfor %}
+  # The jobLogger sweeper duration (ignored if `jobLogger` is `stdout`)
+  logger_sweeper_duration: {{ harbor_config.jobservice.logger_sweeper_duration | default(1) }} #days
+
+notification:
+  # Maximum retry count for webhook job
+  webhook_job_max_retry: {{ harbor_config.notification.webhook_job_max_retry | default(3) }}
+  # HTTP client timeout for webhook job
+  webhook_job_http_client_timeout: {{ harbor_config.notification.webhook_job_http_client_timeout | default(3) }} #seconds
+
+# Log configurations
+log:
+  # options are debug, info, warning, error, fatal
+  level: {{ harbor_config.log.level | default('info') }}
+  # configs for logs in local storage
+  local:
+    # Log files are rotated log_rotate_count times before being removed. If count is 0, old versions are removed rather than rotated.
+    rotate_count: {{ harbor_config.log.local.rotate_count | default(50) }}
+    # Log files are rotated only if they grow bigger than log_rotate_size bytes. If size is followed by k, the size is assumed to be in kilobytes.
+    # If the M is used, the size is in megabytes, and if G is used, the size is in gigabytes. So size 100, size 100k, size 100M and size 100G
+    # are all valid.
+    rotate_size: {{ harbor_config.log.local.rotate_size | default('200M') }}
+    # The directory on your host that store log
+    location: {{ harbor_config.log.local.location | default('/var/log/harbor') }}
+
+{% if harbor_config.log.external_endpoint is defined %}
+  # Uncomment following lines to enable external syslog endpoint.
+  external_endpoint:
+    # protocol used to transmit log to external endpoint, options is tcp or udp
+    protocol: {{ harbor_config.log.external_endpoint.protocol | default('tcp') }}
+    # The host of external endpoint
+    host: {{ harbor_config.log.external_endpoint.host }}
+    # Port of external endpoint
+    port: {{ harbor_config.log.external_endpoint.port | default(5140) }}
+{% endif %}
+
+#This attribute is for migrator to detect the version of the .cfg file, DO NOT MODIFY!
+_version: {{ harbor_config._version | default('2.13.0') }}
+
+{% if harbor_config.external_database is defined %}
+# Uncomment external_database if using external database.
+external_database:
+  harbor:
+    host: {{ harbor_config.external_database.harbor.host }}
+    port: {{ harbor_config.external_database.harbor.port | default(5432) }}
+    db_name: {{ harbor_config.external_database.harbor.db_name }}
+    username: {{ harbor_config.external_database.harbor.username }}
+    password: {{ harbor_config.external_database.harbor.password }}
+    ssl_mode: {{ harbor_config.external_database.harbor.ssl_mode | default('disable') }}
+    max_idle_conns: {{ harbor_config.external_database.harbor.max_idle_conns | default(2) }}
+    max_open_conns: {{ harbor_config.external_database.harbor.max_open_conns | default(0) }}
+{% endif %}
+
+{% if harbor_config.redis is defined %}
+# Uncomment redis if need to customize redis db
+redis:
+  # db_index 0 is for core, it's unchangeable
+{% if harbor_config.redis.registry_db_index is defined %}
+  registry_db_index: {{ harbor_config.redis.registry_db_index }}
+{% endif %}
+{% if harbor_config.redis.jobservice_db_index is defined %}
+  jobservice_db_index: {{ harbor_config.redis.jobservice_db_index }}
+{% endif %}
+{% if harbor_config.redis.trivy_db_index is defined %}
+  trivy_db_index: {{ harbor_config.redis.trivy_db_index }}
+{% endif %}
+  # it's optional, the db for harbor business misc, by default is 0, uncomment it if you want to change it.
+{% if harbor_config.redis.harbor_db_index is defined %}
+  harbor_db_index: {{ harbor_config.redis.harbor_db_index }}
+{% endif %}
+  # it's optional, the db for harbor cache layer, by default is 0, uncomment it if you want to change it.
+{% if harbor_config.redis.cache_layer_db_index is defined %}
+  cache_layer_db_index: {{ harbor_config.redis.cache_layer_db_index }}
+{% endif %}
+{% endif %}
+
+{% if harbor_config.external_redis is defined %}
+# Uncomment external_redis if using external Redis server
+external_redis:
+  # support redis, redis+sentinel
+  # host for redis: <host_redis>:<port_redis>
+  # host for redis+sentinel:
+  #  <host_sentinel1>:<port_sentinel1>,<host_sentinel2>:<port_sentinel2>,<host_sentinel3>:<port_sentinel3>
+  host: {{ harbor_config.external_redis.host }}
+  password: {{ harbor_config.external_redis.password | default('') }}
+  # Redis AUTH command was extended in Redis 6, it is possible to use it in the two-arguments AUTH <username> <password> form.
+  # there's a known issue when using external redis username ref:https://github.com/goharbor/harbor/issues/18892
+  # if you care about the image pull/push performance, please refer to this https://github.com/goharbor/harbor/wiki/Harbor-FAQs#external-redis-username-password-usage
+{% if harbor_config.external_redis.username is defined %}
+  username: {{ harbor_config.external_redis.username }}
+{% endif %}
+  # sentinel_master_set must be set to support redis+sentinel
+{% if harbor_config.external_redis.sentinel_master_set is defined %}
+  sentinel_master_set: {{ harbor_config.external_redis.sentinel_master_set }}
+{% endif %}
+  # tls configuration for redis connection
+  # only server-authentication is supported
+  # mtls for redis connection is not supported
+  # tls connection will be disable by default 
+{% if harbor_config.external_redis.tlsOptions is defined %}
+  tlsOptions:
+    enable: {{ harbor_config.external_redis.tlsOptions.enable | default(false) | lower }}
+{% if harbor_config.external_redis.tlsOptions.rootCA is defined %}
+    # if it is a self-signed ca, please set the ca path specifically.
+    rootCA: {{ harbor_config.external_redis.tlsOptions.rootCA }}
+{% endif %}
+{% endif %}
+  # db_index 0 is for core, it's unchangeable
+  registry_db_index: {{ harbor_config.external_redis.registry_db_index | default(1) }}
+  jobservice_db_index: {{ harbor_config.external_redis.jobservice_db_index | default(2) }}
+  trivy_db_index: {{ harbor_config.external_redis.trivy_db_index | default(5) }}
+  idle_timeout_seconds: {{ harbor_config.external_redis.idle_timeout_seconds | default(30) }}
+  # it's optional, the db for harbor business misc, by default is 0, uncomment it if you want to change it.
+{% if harbor_config.external_redis.harbor_db_index is defined %}
+  harbor_db_index: {{ harbor_config.external_redis.harbor_db_index }}
+{% endif %}
+  # it's optional, the db for harbor cache layer, by default is 0, uncomment it if you want to change it.
+{% if harbor_config.external_redis.cache_layer_db_index is defined %}
+  cache_layer_db_index: {{ harbor_config.external_redis.cache_layer_db_index }}
+{% endif %}
+{% endif %}
+
+{% if harbor_config.uaa is defined %}
+# Uncomment uaa for trusting the certificate of uaa instance that is hosted via self-signed cert.
+uaa:
+  ca_file: {{ harbor_config.uaa.ca_file }}
+{% endif %}
+
+# Global proxy
+# Config http proxy for components, e.g. http://my.proxy.com:3128
+# Components doesn't need to connect to each others via http proxy.
+# Remove component from `components` array if want disable proxy
+# for it. If you want use proxy for replication, MUST enable proxy
+# for core and jobservice, and set `http_proxy` and `https_proxy`.
+# Add domain to the `no_proxy` field, when you want disable proxy
+# for some special registry.
+proxy:
+{% if harbor_config.proxy.http_proxy is defined %}
+  http_proxy: {{ harbor_config.proxy.http_proxy }}
+{% else %}
+  http_proxy:
+{% endif %}
+{% if harbor_config.proxy.https_proxy is defined %}
+  https_proxy: {{ harbor_config.proxy.https_proxy }}
+{% else %}
+  https_proxy:
+{% endif %}
+{% if harbor_config.proxy.no_proxy is defined %}
+  no_proxy: {{ harbor_config.proxy.no_proxy }}
+{% else %}
+  no_proxy:
+{% endif %}
+  components:
+{% for component in harbor_config.proxy.components | default(['core', 'jobservice', 'trivy']) %}
+    - {{ component }}
+{% endfor %}
+
+{% if harbor_config.metric is defined and harbor_config.metric.enabled | default(false) %}
+metric:
+  enabled: {{ harbor_config.metric.enabled | lower }}
+  port: {{ harbor_config.metric.port | default(9090) }}
+  path: {{ harbor_config.metric.path | default('/metrics') }}
+{% endif %}
+
+{% if harbor_config.trace is defined and harbor_config.trace.enabled | default(false) %}
+# Trace related config
+# only can enable one trace provider(jaeger or otel) at the same time,
+# and when using jaeger as provider, can only enable it with agent mode or collector mode.
+# if using jaeger collector mode, uncomment endpoint and uncomment username, password if needed
+# if using jaeger agetn mode uncomment agent_host and agent_port
+trace:
+  enabled: {{ harbor_config.trace.enabled | lower }}
+  # set sample_rate to 1 if you wanna sampling 100% of trace data; set 0.5 if you wanna sampling 50% of trace data, and so forth
+  sample_rate: {{ harbor_config.trace.sample_rate | default(1) }}
+{% if harbor_config.trace.namespace is defined %}
+  # namespace used to differentiate different harbor services
+  namespace: {{ harbor_config.trace.namespace }}
+{% endif %}
+{% if harbor_config.trace.attributes is defined %}
+  # attributes is a key value dict contains user defined attributes used to initialize trace provider
+  attributes:
+{% for key, value in harbor_config.trace.attributes.items() %}
+    {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+{% if harbor_config.trace.jaeger is defined %}
+  # jaeger should be 1.26 or newer.
+  jaeger:
+{% if harbor_config.trace.jaeger.endpoint is defined %}
+    endpoint: {{ harbor_config.trace.jaeger.endpoint }}
+{% endif %}
+{% if harbor_config.trace.jaeger.username is defined %}
+    username: {{ harbor_config.trace.jaeger.username }}
+{% endif %}
+{% if harbor_config.trace.jaeger.password is defined %}
+    password: {{ harbor_config.trace.jaeger.password }}
+{% endif %}
+{% if harbor_config.trace.jaeger.agent_host is defined %}
+    agent_host: {{ harbor_config.trace.jaeger.agent_host }}
+{% endif %}
+{% if harbor_config.trace.jaeger.agent_port is defined %}
+    # export trace data by jaeger.thrift in compact mode
+    agent_port: {{ harbor_config.trace.jaeger.agent_port }}
+{% endif %}
+{% endif %}
+{% if harbor_config.trace.otel is defined %}
+  otel:
+    endpoint: {{ harbor_config.trace.otel.endpoint }}
+{% if harbor_config.trace.otel.url_path is defined %}
+    url_path: {{ harbor_config.trace.otel.url_path }}
+{% endif %}
+{% if harbor_config.trace.otel.compression is defined %}
+    compression: {{ harbor_config.trace.otel.compression | lower }}
+{% endif %}
+{% if harbor_config.trace.otel.insecure is defined %}
+    insecure: {{ harbor_config.trace.otel.insecure | lower }}
+{% endif %}
+{% if harbor_config.trace.otel.timeout is defined %}
+    # timeout is in seconds
+    timeout: {{ harbor_config.trace.otel.timeout }}
+{% endif %}
+{% endif %}
+{% endif %}
+
+# Enable purge _upload directories
+upload_purging:
+  enabled: {{ harbor_config.upload_purging.enabled | default(true) | lower }}
+  # remove files in _upload directories which exist for a period of time, default is one week.
+  age: {{ harbor_config.upload_purging.age | default('168h') }}
+  # the interval of the purge operations
+  interval: {{ harbor_config.upload_purging.interval | default('24h') }}
+  dryrun: {{ harbor_config.upload_purging.dryrun | default(false) | lower }}
+
+# Cache layer configurations
+# If this feature enabled, harbor will cache the resource
+# `project/project_metadata/repository/artifact/manifest` in the redis
+# which can especially help to improve the performance of high concurrent
+# manifest pulling.
+# NOTICE
+# If you are deploying Harbor in HA mode, make sure that all the harbor
+# instances have the same behaviour, all with caching enabled or disabled,
+# otherwise it can lead to potential data inconsistency.
+cache:
+  # not enabled by default
+  enabled: {{ harbor_config.cache.enabled | default(false) | lower }}
+  # keep cache for one day by default
+  expire_hours: {{ harbor_config.cache.expire_hours | default(24) }}
+
+{% if harbor_config.core is defined %}
+# Harbor core configurations
+# Uncomment to enable the following harbor core related configuration items.
+core:
+  # The provider for updating project quota(usage), there are 2 options, redis or db,
+  # by default is implemented by db but you can switch the updation via redis which
+  # can improve the performance of high concurrent pushing to the same project,
+  # and reduce the database connections spike and occupies.
+  # By redis will bring up some delay for quota usage updation for display, so only
+  # suggest switch provider to redis if you were ran into the db connections spike around
+  # the scenario of high concurrent pushing to same project, no improvement for other scenes.
+  quota_update_provider: {{ harbor_config.core.quota_update_provider | default('db') }} # Or redis
+{% endif %}

@@ -1,0 +1,32 @@
+#!/bin/bash
+# Harbor Service Stop Script
+
+set -e
+
+HARBOR_DIR="{{ harbor_dir }}"
+
+cd "$HARBOR_DIR"
+
+if [ ! -f "docker-compose.yml" ]; then
+    echo "Error: docker-compose.yml not found in $HARBOR_DIR" >&2
+    exit 1
+fi
+
+# Check if Harbor is already stopped
+if ! docker compose -f docker-compose.yml ps --services --filter "status=running" | grep -q .; then
+    echo "Harbor is already stopped"
+    exit 0
+fi
+
+# Stop Harbor containers
+echo "Stopping Harbor containers..."
+docker compose -f docker-compose.yml down
+
+# Verify containers are stopped
+sleep 5
+if ! docker compose -f docker-compose.yml ps --services --filter "status=running" | grep -q .; then
+    echo "Harbor service stopped successfully"
+else
+    echo "Warning: Some Harbor containers may still be running"
+    exit 1
+fi

@@ -1,2 +1,22 @@
 ---
 # handlers file for role_harbor
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: restart harbor
+  ansible.builtin.systemd:
+    name: harbor
+    state: restarted
+  when: harbor_installed_stat.stat.exists | default(false)
+
+- name: stop harbor
+  ansible.builtin.systemd:
+    name: harbor
+    state: stopped
+
+- name: start harbor
+  ansible.builtin.systemd:
+    name: harbor
+    state: started

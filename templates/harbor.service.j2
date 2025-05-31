@@ -1,0 +1,22 @@
+[Unit]
+Description=Harbor Container Registry
+Documentation=https://goharbor.io/
+Requires=docker.service
+After=docker.service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory={{ harbor_dir }}
+ExecStart={{ harbor_dir }}/start.sh
+ExecStop={{ harbor_dir }}/stop.sh
+ExecReload={{ harbor_dir }}/restart.sh
+TimeoutStartSec=300
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

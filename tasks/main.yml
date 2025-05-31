@@ -1,2 +1,151 @@
 ---
 # tasks file for role_harbor
+
+- name: Create harbor installation directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ harbor_dir }}"
+    - "{{ harbor_data_dir }}"
+    - "{{ harbor_certs_dir }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Check if SSL certificates already exist
+  ansible.builtin.stat:
+    path: "{{ harbor_certs_dir }}/{{ item | basename }}"
+  register: cert_files_stat
+  loop: "{{ harbor_certs }}"
+  loop_control:
+    label: "{{ item | basename }}"
+
+- name: Download Harbor SSL certificates
+  ansible.builtin.get_url:
+    url: "{{ item.item }}"
+    dest: "{{ harbor_certs_dir }}/{{ item.item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate_certs: false
+    force: false  # Don't re-download if file exists
+  loop: "{{ cert_files_stat.results }}"
+  when: not item.stat.exists
+  loop_control:
+    label: "{{ item.item | basename }}"
+
+- name: Check if Harbor installer already exists
+  ansible.builtin.stat:
+    path: "{{ harbor_dir }}/{{ harbor_installer_file }}"
+  register: harbor_installer_stat
+
+- name: Download Harbor installer
+  ansible.builtin.get_url:
+    url: "{{ harbor_download_url }}"
+    dest: "{{ harbor_dir }}/"
+    mode: '0644'
+    timeout: 300
+    validate_certs: true
+    force: false  # Don't re-download if file exists
+  register: harbor_download_result
+  when: not harbor_installer_stat.stat.exists
+
+- name: Check if Harbor is already extracted
+  ansible.builtin.stat:
+    path: "{{ harbor_dir }}/install.sh"
+  register: harbor_extracted_stat
+
+- name: Extract Harbor installer
+  ansible.builtin.unarchive:
+    src: "{{ harbor_dir }}/{{ harbor_installer_file }}"
+    dest: "{{ harbor_dir }}/"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+    creates: "{{ harbor_dir }}/install.sh"  # Only extract if install.sh doesn't exist
+  when: not harbor_extracted_stat.stat.exists
+
+- name: Generate Harbor configuration file
+  ansible.builtin.template:
+    src: harbor.yml.j2
+    dest: "{{ harbor_dir }}/harbor.yml"
+    owner: root
+    group: root
+    mode: "0644"  # Changed from 0755 as this is a config file
+    backup: true  # Create backup of existing config
+  register: harbor_config_changed
+  notify: restart harbor
+
+- name: Check if Harbor is already installed
+  ansible.builtin.stat:
+    path: "{{ harbor_dir }}/docker-compose.yml"
+  register: harbor_installed_stat
+
+- name: Install Harbor
+  ansible.builtin.command:
+    cmd: >-
+      ./install.sh
+      {%- if harbor_enable.trivy %} --with-trivy{% endif %}
+      {%- if harbor_enable.chartmuseum %} --with-chartmuseum{% endif %}
+      {%- if harbor_enable.notary %} --with-notary{% endif %}
+      {%- if harbor_enable.clair %} --with-clair{% endif %}
+    chdir: "{{ harbor_dir }}"
+  register: harbor_install_result
+  when: not harbor_installed_stat.stat.exists or harbor_config_changed.changed
+  changed_when: harbor_install_result.rc == 0
+  failed_when: harbor_install_result.rc != 0
+  notify: restart harbor
+
+- name: Create Harbor management scripts
+  ansible.builtin.template:
+    src: "service/{{ item }}.j2"
+    dest: "{{ harbor_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - start.sh
+    - stop.sh
+    - restart.sh
+  register: harbor_scripts_changed
+
+- name: Create Harbor systemd service file
+  ansible.builtin.template:
+    src: harbor.service.j2
+    dest: /etc/systemd/system/harbor.service
+    owner: root
+    group: root
+    mode: '0644'
+  register: harbor_service_changed
+  notify: 
+    - reload systemd
+    - restart harbor
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  when: harbor_service_changed.changed
+
+- name: Check Harbor service status
+  ansible.builtin.systemd:
+    name: harbor
+  register: harbor_service_status
+
+- name: Enable and start Harbor service
+  ansible.builtin.systemd:
+    name: harbor
+    enabled: true
+    state: started
+  when: harbor_service_status.status.ActiveState != "active"
+
+- name: Ensure Harbor service is running
+  ansible.builtin.systemd:
+    name: harbor
+    state: started
+  when: harbor_service_status.status.ActiveState != "active"

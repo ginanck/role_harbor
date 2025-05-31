@@ -1,2 +1,495 @@
 ---
 # defaults file for role_harbor
+# Releases: https://github.com/goharbor/harbor/releases
+
+harbor_required_packages:
+  - curl
+  - wget
+  - tar
+  - python3-pip
+  - python3-docker
+  - openssl
+
+harbor_release_version: v2.13.1
+harbor_installer_type: online
+harbor_installer_file: "harbor-{{ harbor_installer_type }}-installer-{{ harbor_release_version }}.tgz"
+harbor_download_url: "https://github.com/goharbor/harbor/releases/download/{{ harbor_release_version }}/{{ harbor_installer_file }}"
+
+harbor_dir: "/opt/harbor"
+harbor_data_dir: "{{ harbor_dir }}/data"
+harbor_certs_dir: "{{ harbor_dir }}/certs"
+
+harbor_certs: []
+  # - http://ca.internal.guru/certs/harbor-cert/harbor-cert.crt
+  # - http://ca.internal.guru/certs/harbor-cert/harbor-cert.key
+
+harbor_enable:
+  trivy: true
+  notary: false
+  chartmuseum: false
+  clair: false
+
+# Default Harbor configuration
+harbor_config:
+  # Basic configuration
+  hostname: "harbor.internal.guru"
+
+  # HTTP configuration
+  http:
+    port: 80
+
+  # HTTPS configuration (optional)
+  https:
+    enabled: false
+    port: 443
+    # certificate: "{{ harbor_certs_dir }}/harbor-cert.crt"
+    # private_key: "{{ harbor_certs_dir }}/harbor-cert.key"
+    # strong_ssl_ciphers: false
+
+  # IP family configuration (optional)
+  # ip_family:
+  #   ipv6:
+  #     enabled: false
+  #   ipv4:
+  #     enabled: true
+
+  # Internal TLS configuration (optional)
+  # internal_tls:
+  #   enabled: false
+  #   dir: "/etc/harbor/tls/internal"
+
+  # External URL (optional)
+  # external_url: "https://reg.mydomain.com:8433"
+
+  # Admin password
+  harbor_admin_password: "Harbor12345"
+
+  # Database configuration
+  database:
+    password: "root123"
+    max_idle_conns: 100
+    max_open_conns: 900
+    conn_max_lifetime: "5m"
+    conn_max_idle_time: 0
+
+  # Data volume
+  data_volume: "{{ harbor_data_dir }}"
+
+  # Storage service configuration (optional)
+  # storage_service:
+  #   enabled: false
+  #   backend: "filesystem"  # Options: filesystem, s3, azure, gcs, swift, oss
+  #   filesystem:
+  #     maxthreads: 100
+  #   redirect:
+  #     disable: false
+
+  # Trivy configuration
+  trivy:
+    ignore_unfixed: false
+    skip_update: false
+    skip_java_db_update: false
+    offline_scan: false
+    security_check: "vuln"
+    insecure: false
+    timeout: "5m0s"
+    # github_token: ""  # Optional
+
+  # Job service configuration
+  jobservice:
+    max_job_workers: 10
+    max_job_duration_hours: 24
+    job_loggers:
+      - "STD_OUTPUT"
+      - "FILE"
+    logger_sweeper_duration: 1
+
+  # Notification configuration
+  notification:
+    webhook_job_max_retry: 3
+    webhook_job_http_client_timeout: 3
+
+  # Log configuration
+  log:
+    level: "info"
+    local:
+      rotate_count: 50
+      rotate_size: "200M"
+      location: "/var/log/harbor"
+    # external_endpoint:  # Optional
+    #   protocol: "tcp"
+    #   host: "localhost"
+    #   port: 5140
+
+  # Version
+  _version: "2.13.0"
+
+  # External database configuration (optional)
+  # external_database:
+  #   harbor:
+  #     host: "harbor_db_host"
+  #     port: 5432
+  #     db_name: "harbor_db_name"
+  #     username: "harbor_db_username"
+  #     password: "harbor_db_password"
+  #     ssl_mode: "disable"
+  #     max_idle_conns: 2
+  #     max_open_conns: 0
+
+  # Redis configuration (optional)
+  # redis:
+  #   registry_db_index: 1
+  #   jobservice_db_index: 2
+  #   trivy_db_index: 5
+  #   harbor_db_index: 6
+  #   cache_layer_db_index: 7
+
+  # External Redis configuration (optional)
+  # external_redis:
+  #   host: "redis:6379"
+  #   password: ""
+  #   username: ""  # Optional
+  #   sentinel_master_set: ""  # Optional
+  #   tlsOptions:
+  #     enable: false
+  #     rootCA: ""  # Optional
+  #   registry_db_index: 1
+  #   jobservice_db_index: 2
+  #   trivy_db_index: 5
+  #   idle_timeout_seconds: 30
+  #   harbor_db_index: 6
+  #   cache_layer_db_index: 7
+
+  # UAA configuration (optional)
+  # uaa:
+  #   ca_file: "/path/to/ca"
+
+  # Proxy configuration
+  proxy:
+    # http_proxy: ""
+    # https_proxy: ""
+    # no_proxy: ""
+    # components:
+    #   - "core"
+    #   - "jobservice"
+    #   - "trivy"
+
+  # Metrics configuration (optional)
+  # metric:
+  #   enabled: false
+  #   port: 9090
+  #   path: "/metrics"
+
+  # Tracing configuration (optional)
+  # trace:
+  #   enabled: false
+  #   sample_rate: 1
+  #   namespace: ""
+  #   attributes:
+  #     application: "harbor"
+  #   jaeger:
+  #     endpoint: "http://hostname:14268/api/traces"
+  #     username: ""
+  #     password: ""
+  #     agent_host: "hostname"
+  #     agent_port: 6831
+  #   otel:
+  #     endpoint: "hostname:4318"
+  #     url_path: "/v1/traces"
+  #     compression: false
+  #     insecure: true
+  #     timeout: 10
+
+  # Upload purging configuration
+  upload_purging:
+    enabled: true
+    age: "168h"
+    interval: "24h"
+    dryrun: false
+
+  # Cache configuration
+  cache:
+    enabled: false
+    expire_hours: 24
+
+  # Core configuration (optional)
+  # core:
+  #   quota_update_provider: "db"  # Or "redis"
+
+# =============================================================================
+# EXAMPLE CONFIGURATIONS FOR DIFFERENT SCENARIOS
+# =============================================================================
+
+# Example 1: Basic HTTP-only setup
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   https:
+#     enabled: false
+
+# Example 2: HTTPS with custom certificates
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   https:
+#     enabled: true
+#     certificate: "/etc/ssl/certs/harbor.crt"
+#     private_key: "/etc/ssl/private/harbor.key"
+
+# Example 3: External database setup
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   external_database:
+#     harbor:
+#       host: "postgres.example.com"
+#       port: 5432
+#       db_name: "harbor"
+#       username: "harbor_user"
+#       password: "secure_password"
+#       ssl_mode: "require"
+
+# =============================================================================
+# STORAGE BACKEND EXAMPLES
+# =============================================================================
+
+# Example 4: Filesystem storage (default)
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     backend: "filesystem"
+#     filesystem:
+#       maxthreads: 100
+#     redirect:
+#       disable: false
+
+# Example 5: Amazon S3 storage
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     backend: "s3"
+#     s3:
+#       region: "us-west-2"
+#       bucket: "harbor-registry"
+#       accesskey: "AKIAIOSFODNN7EXAMPLE"
+#       secretkey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+#       regionendpoint: "https://s3.us-west-2.amazonaws.com"
+#       encrypt: false
+#       secure: true
+#       v4auth: true
+#       chunksize: 5242880
+#       rootdirectory: "/harbor"
+#       storageclass: "STANDARD"
+#     redirect:
+#       disable: false
+
+# Example 6: S3-compatible storage (MinIO, etc.)
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     backend: "s3"
+#     s3:
+#       region: "us-east-1"
+#       bucket: "harbor-registry"
+#       accesskey: "minioadmin"
+#       secretkey: "minioadmin"
+#       regionendpoint: "https://minio.example.com:9000"
+#       encrypt: false
+#       secure: true
+#       v4auth: true
+#       chunksize: 5242880
+#       rootdirectory: "/harbor"
+#     redirect:
+#       disable: false
+
+# Example 7: Microsoft Azure Blob Storage
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     backend: "azure"
+#     azure:
+#       accountname: "harborstorageaccount"
+#       accountkey: "base64encodedaccountkey=="
+#       container: "harbor-registry"
+#       realm: "core.windows.net"
+#     redirect:
+#       disable: false
+
+# Example 8: Google Cloud Storage (GCS)
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     backend: "gcs"
+#     gcs:
+#       bucket: "harbor-registry-bucket"
+#       keyfile: "/path/to/service-account-key.json"
+#       rootdirectory: "/harbor"
+#     redirect:
+#       disable: false
+
+# Example 9: OpenStack Swift
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     backend: "swift"
+#     swift:
+#       authurl: "https://identity.example.com:5000/v3"
+#       username: "harbor_user"
+#       password: "harbor_password"
+#       container: "harbor-registry"
+#       region: "RegionOne"
+#       tenant: "harbor_project"
+#       tenantid: "project_id_here"
+#       domain: "default"
+#       domainid: "domain_id_here"
+#       trustid: "trust_id_here"
+#       insecureskipverify: false
+#       chunksize: 5242880
+#       prefix: "harbor"
+#       secretkey: "secret_key_for_temp_urls"
+#       accesskey: "access_key_for_temp_urls"
+#       authversion: "3"
+#       endpointtype: "public"
+#       tempurlcontainerkey: "temp_url_key"
+#       tempurlmethods: "GET,PUT,HEAD,POST,DELETE"
+#     redirect:
+#       disable: false
+
+# Example 10: Alibaba Cloud Object Storage Service (OSS)
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     backend: "oss"
+#     oss:
+#       accesskeyid: "your_access_key_id"
+#       accesskeysecret: "your_access_key_secret"
+#       region: "oss-cn-hangzhou"
+#       bucket: "harbor-registry"
+#       endpoint: "oss-cn-hangzhou.aliyuncs.com"
+#       internal: false
+#       encrypt: false
+#       secure: true
+#       chunksize: 10485760
+#       rootdirectory: "/harbor"
+#     redirect:
+#       disable: false
+
+# Example 11: Storage with custom CA bundle (for self-signed certificates)
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   storage_service:
+#     enabled: true
+#     ca_bundle: "/path/to/custom-ca-bundle.crt"
+#     backend: "s3"
+#     s3:
+#       region: "us-west-2"
+#       bucket: "harbor-registry"
+#       accesskey: "your_access_key"
+#       secretkey: "your_secret_key"
+#       regionendpoint: "https://s3.internal.company.com"
+#       secure: true
+#     redirect:
+#       disable: false
+
+# =============================================================================
+# ADVANCED CONFIGURATION EXAMPLES
+# =============================================================================
+
+# Example 12: External Redis setup
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   external_redis:
+#     host: "redis.example.com:6379"
+#     password: "redis_password"
+#     registry_db_index: 1
+#     jobservice_db_index: 2
+#     trivy_db_index: 5
+#     idle_timeout_seconds: 30
+
+# Example 13: Redis Sentinel setup
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   external_redis:
+#     host: "sentinel1.example.com:26379,sentinel2.example.com:26379,sentinel3.example.com:26379"
+#     password: "redis_password"
+#     sentinel_master_set: "mymaster"
+#     registry_db_index: 1
+#     jobservice_db_index: 2
+#     trivy_db_index: 5
+
+# Example 14: Redis with TLS
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   external_redis:
+#     host: "redis.example.com:6380"
+#     password: "redis_password"
+#     tlsOptions:
+#       enable: true
+#       rootCA: "/path/to/redis-ca.crt"
+#     registry_db_index: 1
+#     jobservice_db_index: 2
+#     trivy_db_index: 5
+
+# Example 15: IPv6 enabled setup
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   ip_family:
+#     ipv6:
+#       enabled: true
+#     ipv4:
+#       enabled: true
+
+# Example 16: Internal TLS enabled
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   internal_tls:
+#     enabled: true
+#     dir: "/etc/harbor/tls/internal"
+
+# Example 17: External syslog logging
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   log:
+#     level: "info"
+#     local:
+#       rotate_count: 50
+#       rotate_size: "200M"
+#       location: "/var/log/harbor"
+#     external_endpoint:
+#       protocol: "tcp"
+#       host: "syslog.example.com"
+#       port: 514
+
+# Example 18: Proxy configuration
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   proxy:
+#     http_proxy: "http://proxy.example.com:8080"
+#     https_proxy: "https://proxy.example.com:8080"
+#     no_proxy: "localhost,127.0.0.1,.example.com"
+#     components:
+#       - "core"
+#       - "jobservice"
+#       - "trivy"
+
+# Example 19: Metrics enabled
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   metric:
+#     enabled: true
+#     port: 9090
+#     path: "/metrics"
+
+# Example 20: Jaeger tracing
+# harbor_config:
+#   hostname: "harbor.example.com"
+#   trace:
+#     enabled: true
+#     sample_rate: 0.1
+#     namespace: "harbor-prod"
+#     attributes:
+#       application
