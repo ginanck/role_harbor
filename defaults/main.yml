@@ -25,9 +25,6 @@ harbor_certs: []
 
 harbor_enable:
   trivy: true
-  notary: false
-  chartmuseum: false
-  clair: false
 
 # Default Harbor configuration
 harbor_config:

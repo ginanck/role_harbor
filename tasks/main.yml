@@ -90,11 +90,7 @@
 - name: Install Harbor
   ansible.builtin.command:
     cmd: >-
-      ./install.sh
-      {%- if harbor_enable.trivy %} --with-trivy{% endif %}
-      {%- if harbor_enable.chartmuseum %} --with-chartmuseum{% endif %}
-      {%- if harbor_enable.notary %} --with-notary{% endif %}
-      {%- if harbor_enable.clair %} --with-clair{% endif %}
+      ./install.sh {%- if harbor_enable.trivy %} --with-trivy{% endif %}
     chdir: "{{ harbor_dir }}"
   register: harbor_install_result
   when: not harbor_installed_stat.stat.exists or harbor_config_changed.changed
