@@ -139,9 +139,3 @@
     enabled: true
     state: started
   when: harbor_service_status.status.ActiveState != "active"
-
-- name: Ensure Harbor service is running
-  ansible.builtin.systemd:
-    name: harbor
-    state: started
-  when: harbor_service_status.status.ActiveState != "active"
